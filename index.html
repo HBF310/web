@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#000000" />
+    <title>Landino AI Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto:wght@300;400;700&display=swap');
+      body {
+        font-family: 'Roboto', sans-serif;
+        background-color: #0f172a; /* bg-slate-900 */
+        color: white;
+      }
+      h1, h2, h3, .font-orbitron {
+        font-family: 'Orbitron', sans-serif;
+      }
+      /* Custom scrollbar for a more sci-fi feel */
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e293b; /* bg-slate-800 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #a855f7; /* purple-500 */
+        border-radius: 5px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #9333ea; /* purple-600 */
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.6.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.8.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module">
+      import React from "https://esm.sh/react@^19.1.0";
+      import ReactDOM from "https://esm.sh/react-dom@^19.1.0/client";
+      import { HashRouter, Routes, Route, NavLink, useNavigate } from "https://esm.sh/react-router-dom@^7.6.3";
+      import { GoogleGenAI } from "https://esm.sh/@google/genai@0.15.0";
+
+      const { useState, createContext, useContext, ReactNode } = React;
+
+      // --- from components/icons.tsx ---
+      const GoogleIcon = (props) => (
+        React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", viewBox: "0 0 48 48", width: "24px", height: "24px", ...props },
+          React.createElement('path', { fill: "#FFC107", d: "M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" }),
+          React.createElement('path', { fill: "#FF3D00", d: "M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" }),
+          React.createElement('path', { fill: "#4CAF50", d: "M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" }),
+          React.createElement('path', { fill: "#1976D2", d: "M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C41.38,36.097,44,30.651,44,24C44,22.659,43.862,21.35,43.611,20.083z" })
+        )
+      );
+
+      const Gamepad2 = (props) => (
+        React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", ...props },
+          React.createElement('line', { x1: "6", x2: "10", y1: "12", y2: "12" }),
+          React.createElement('line', { x1: "8", x2: "8", y1: "10", y2: "14" }),
+          React.createElement('path', { d: "M17.5 22h-11a4 4 0 0 1-4-4V9a4 4 0 0 1 4-4h11a4 4 0 0 1 4 4v9a4 4 0 0 1-4 4Z" }),
+          React.createElement('path', { d: "M15 12h2" })
+        )
+      );
+      
+      const Zap = (props) => (
+        React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: "24", height: "24", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", ...props },
+          React.createElement('polygon', { points: "13 2 3 14 12 14 11 22 21 10 12 10 13 2" })
+        )
+      );
+
+      // --- from contexts/AuthContext.tsx ---
+      const AuthContext = createContext(undefined);
+
+      const AuthProvider = ({ children }) => {
+        const [isAuthenticated, setIsAuthenticated] = useState(() => {
+          try {
+            return sessionStorage.getItem('isAuthenticated') === 'true';
+          } catch (error) {
+            console.warn('Cannot access sessionStorage. Auth state will not be persisted.', error);
+            return false;
+          }
+        });
+
+        const login = () => {
+          try {
+            sessionStorage.setItem('isAuthenticated', 'true');
+          } catch (error) {
+            console.warn('Cannot access sessionStorage. Auth state will not be persisted.', error);
+          }
+          setIsAuthenticated(true);
+        };
+
+        const logout = () => {
+          try {
+            sessionStorage.removeItem('isAuthenticated');
+          } catch (error) {
+            console.warn('Cannot access sessionStorage. Auth state will not be persisted.', error);
+          }
+          setIsAuthenticated(false);
+        };
+
+        return React.createElement(AuthContext.Provider, { value: { isAuthenticated, login, logout } }, children);
+      };
+
+      const useAuth = () => {
+        const context = useContext(AuthContext);
+        if (context === undefined) {
+          throw new Error('useAuth must be used within an AuthProvider');
+        }
+        return context;
+      };
+
+      // --- from components/Footer.tsx ---
+      const Footer = () => {
+        return React.createElement('footer', { className: "bg-slate-800/50 mt-8" },
+          React.createElement('div', { className: "container mx-auto py-4 px-4 text-center text-gray-400" },
+            React.createElement('p', null, "© 2024 Landino. All rights reserved.")
+          )
+        );
+      };
+      
+      // --- from components/Navbar.tsx ---
+      const Navbar = () => {
+        const { isAuthenticated, logout } = useAuth();
+        const navigate = useNavigate();
+
+        const handleSignOut = () => {
+          logout();
+          navigate('/');
+        };
+
+        const activeLinkClass = 'bg-purple-600 text-white';
+        const inactiveLinkClass = 'text-gray-300 hover:bg-slate-700 hover:text-white';
+        const linkBaseClass = 'px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200';
+        const signOutButtonClass = 'px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 bg-red-600 hover:bg-red-700 text-white';
+
+        const navLinks = (isMobile = false) => {
+          const mobileClass = isMobile ? 'w-full text-center ' : '';
+          return React.createElement(React.Fragment, null,
+            isAuthenticated ? (
+              React.createElement('button', { onClick: handleSignOut, className: `${mobileClass} ${signOutButtonClass}` }, "Sign Out")
+            ) : (
+              React.createElement(NavLink, { to: "/", className: ({ isActive }) => `${mobileClass} ${linkBaseClass} ${isActive ? activeLinkClass : inactiveLinkClass}` }, "Sign In")
+            ),
+            React.createElement(NavLink, { to: "/about", className: ({ isActive }) => `${mobileClass} ${linkBaseClass} ${isActive ? activeLinkClass : inactiveLinkClass}` }, "About"),
+            React.createElement(NavLink, { to: "/links", className: ({ isActive }) => `${mobileClass} ${linkBaseClass} ${isActive ? activeLinkClass : inactiveLinkClass}` }, "Links"),
+            React.createElement(NavLink, { to: "/game", className: ({ isActive }) => `${mobileClass} ${linkBaseClass} ${isActive ? 'bg-yellow-500 text-black' : inactiveLinkClass}` }, "Racing Game")
+          );
+        };
+
+        return React.createElement('nav', { className: "bg-slate-800/50 backdrop-blur-sm sticky top-0 z-50" },
+          React.createElement('div', { className: "container mx-auto px-4" },
+            React.createElement('div', { className: "relative flex items-center justify-between h-16" },
+              React.createElement('div', { className: "flex-1 flex items-center justify-start" },
+                React.createElement(NavLink, { to: "/about", className: "flex-shrink-0 flex items-center gap-2" },
+                  React.createElement(Gamepad2, { className: "h-8 w-8 text-purple-400" }),
+                  React.createElement('span', { className: "font-orbitron font-bold text-xl text-white" }, "LANDINO")
+                )
+              ),
+              React.createElement('div', { className: "hidden sm:block sm:ml-6" },
+                React.createElement('div', { className: "flex space-x-4" }, navLinks())
+              )
+            )
+          ),
+          React.createElement('div', { className: "sm:hidden p-2" },
+            React.createElement('div', { className: "flex justify-around space-x-1" }, navLinks(true))
+          )
+        );
+      };
+
+      // --- from pages/SignIn.tsx ---
+      const SignIn = () => {
+        const navigate = useNavigate();
+        const { login } = useAuth();
+
+        const handleSignIn = (e) => {
+          e.preventDefault();
+          login();
+          navigate('/about');
+        };
+
+        return React.createElement('div', { className: "flex items-center justify-center min-h-[60vh]" },
+          React.createElement('div', { className: "w-full max-w-md p-8 space-y-8 bg-slate-800/50 rounded-lg shadow-2xl backdrop-blur-sm" },
+            React.createElement('div', { className: "text-center" },
+              React.createElement('h1', { className: "text-4xl font-orbitron font-bold text-white" }, "Welcome"),
+              React.createElement('p', { className: "mt-2 text-gray-400" }, "Sign in to access the Landino AI Portal")
+            ),
+            React.createElement('div', { className: "flex flex-col space-y-4" },
+              React.createElement('button', { onClick: handleSignIn, className: "flex items-center justify-center w-full px-4 py-3 font-semibold text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors duration-300" },
+                React.createElement(GoogleIcon, { className: "w-6 h-6 mr-3" }),
+                React.createElement('span', null, "Sign in with Google")
+              ),
+              React.createElement('div', { className: "relative flex items-center py-2" },
+                React.createElement('div', { className: "flex-grow border-t border-gray-600" }),
+                React.createElement('span', { className: "flex-shrink mx-4 text-gray-400" }, "Or continue with"),
+                React.createElement('div', { className: "flex-grow border-t border-gray-600" })
+              ),
+              React.createElement('form', { onSubmit: handleSignIn, className: "space-y-6" },
+                React.createElement('div', null,
+                  React.createElement('label', { htmlFor: "email", className: "sr-only" }, "Email address"),
+                  React.createElement('input', { id: "email", name: "email", type: "email", autoComplete: "email", required: true, className: "w-full px-4 py-3 text-white bg-slate-700 border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500", placeholder: "Email address" })
+                ),
+                React.createElement('div', null,
+                  React.createElement('label', { htmlFor: "password", className: "sr-only" }, "Password"),
+                  React.createElement('input', { id: "password", name: "password", type: "password", autoComplete: "current-password", required: true, className: "w-full px-4 py-3 text-white bg-slate-700 border border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500", placeholder: "Password" })
+                ),
+                React.createElement('button', { type: "submit", className: "w-full px-4 py-3 font-bold text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-purple-500 transition-colors duration-300" }, "Sign In")
+              )
+            )
+          )
+        );
+      };
+
+      // --- from pages/About.tsx ---
+      const About = () => {
+        return React.createElement('div', { className: "max-w-4xl mx-auto p-4" },
+          React.createElement('div', { className: "bg-slate-800/50 rounded-lg shadow-xl p-8 backdrop-blur-sm" },
+            React.createElement('h1', { className: "text-5xl font-orbitron font-bold text-purple-400 mb-6 text-center" }, "About Landino AI"),
+            React.createElement('div', { className: "space-y-6 text-lg text-gray-300" },
+              React.createElement('p', null, "Welcome to the future of interaction. Landino AI is a cutting-edge artificial intelligence project designed to revolutionize how we connect with technology. Our mission is to create an AI that is not only intelligent but also intuitive, creative, and a genuine partner in problem-solving and creation."),
+              React.createElement('p', null, "Built on advanced neural networks and large language models, Landino AI can understand complex queries, generate human-like text, create stunning visuals, and even assist in writing code. It's more than just a tool; it's a collaborator designed to amplify human potential."),
+              React.createElement('p', null, "This portal is your gateway to exploring the capabilities of Landino AI. From here, you can access various projects, tools, and even games powered by our technology. Dive in and discover what's possible when human creativity meets artificial intelligence.")
+            ),
+            React.createElement('div', { className: "mt-10 text-center" },
+              React.createElement('div', { className: "inline-flex items-center justify-center p-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg" },
+                React.createElement('div', { className: "px-8 py-4 bg-slate-800 rounded-md" },
+                  React.createElement('p', { className: "font-orbitron text-2xl text-white" }, "Innovate. Create. Collaborate.")
+                )
+              )
+            )
+          )
+        );
+      };
+
+      // --- from pages/Links.tsx ---
+      const linksData = [
+        { name: 'HBF Project', url: 'https://hbf310.github.io/HBF/', description: 'A foundational project showcasing initial web development skills and concepts.' },
+        { name: 'Landino v1', url: 'https://dhakir4.github.io/landino/', description: 'The first iteration of the Landino project, exploring core AI functionalities.' },
+        { name: 'Game Project', url: 'https://hbf310.github.io/gmae/', description: 'An early gaming experiment, laying the groundwork for more complex interactive experiences.' },
+      ];
+
+      const Links = () => {
+        return React.createElement('div', { className: "max-w-4xl mx-auto p-4" },
+          React.createElement('div', { className: "text-center mb-10" },
+            React.createElement('h1', { className: "text-5xl font-orbitron font-bold text-white" }, "Project Links"),
+            React.createElement('p', { className: "mt-2 text-gray-400" }, "Explore related projects and previous versions.")
+          ),
+          React.createElement('div', { className: "grid gap-8 md:grid-cols-1" },
+            linksData.map((link) => (
+              React.createElement('a', { key: link.url, href: link.url, target: "_blank", rel: "noopener noreferrer", className: "block p-6 bg-slate-800/50 rounded-lg shadow-lg hover:shadow-purple-500/30 hover:-translate-y-1 transition-all duration-300" },
+                React.createElement('h2', { className: "text-2xl font-orbitron font-bold text-purple-400" }, link.name),
+                React.createElement('p', { className: "mt-2 text-gray-300" }, link.description),
+                React.createElement('p', { className: "mt-4 text-sm text-cyan-400 truncate" }, link.url)
+              )
+            ))
+          )
+        );
+      };
+      
+      // --- from pages/Game.tsx ---
+      const Game = () => {
+        const [prompt, setPrompt] = useState('');
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState(null);
+        const [generatedContent, setGeneratedContent] = useState(null);
+
+        const handleGenerate = async () => {
+          if (!prompt) {
+            setError("Please enter a theme for your game concept.");
+            return;
+          }
+          setLoading(true);
+          setError(null);
+          setGeneratedContent(null);
+
+          try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            
+            const textPrompt = `You are a creative director for a video game studio. Based on the theme "${prompt}", generate an exciting concept for a next-gen racing game. Include a "Track Description" section and a "Car Suggestions" section. Keep the tone epic and engaging. Don't use markdown formatting.`;
+            const imagePrompt = `A dynamic, cinematic concept art of a race car on a track, based on the theme: ${prompt}. High-octane, futuristic, detailed.`;
+            
+            const textPromise = ai.models.generateContent({
+              model: 'gemini-2.5-flash-preview-04-17',
+              contents: textPrompt,
+            });
+
+            const imagePromise = ai.models.generateImages({
+              model: 'imagen-3.0-generate-002',
+              prompt: imagePrompt,
+              config: { numberOfImages: 1, outputMimeType: 'image/jpeg' },
+            });
+
+            const [textResponse, imageResponse] = await Promise.all([textPromise, imagePromise]);
+
+            const base64ImageBytes = imageResponse.generatedImages[0].image.imageBytes;
+            const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
+
+            setGeneratedContent({
+              text: textResponse.text,
+              imageUrl: imageUrl,
+            });
+
+          } catch (err) {
+            console.error(err);
+            setError("Failed to generate concept. The AI might be busy, or there was an issue with the request. Please try again.");
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const handleStartOver = () => {
+          setGeneratedContent(null);
+          setPrompt('');
+          setError(null);
+        }
+
+        const renderInitialState = () => React.createElement('div', { className: "w-full max-w-2xl mx-auto text-center" },
+          React.createElement('div', { className: "relative inline-block mb-8" },
+            React.createElement(Gamepad2, { className: "h-24 w-24 text-purple-400 drop-shadow-[0_0_15px_rgba(192,132,252,0.6)]" })
+          ),
+          React.createElement('h1', { className: "text-4xl md:text-5xl font-orbitron font-bold text-white mb-4" }, "AI Game Concept Generator"),
+          React.createElement('p', { className: "text-lg text-gray-400 mb-8" }, "Describe a theme, and let AI create a unique racing game concept for you."),
+          React.createElement('div', { className: "flex flex-col gap-4" },
+            React.createElement('textarea', {
+              value: prompt,
+              onChange: (e) => setPrompt(e.target.value),
+              placeholder: "e.g., A neon-drenched cyberpunk city at midnight",
+              className: "w-full p-4 text-lg bg-slate-800 border-2 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-300 resize-none",
+              rows: 2
+            }),
+            React.createElement('button', {
+              onClick: handleGenerate,
+              disabled: loading,
+              className: "flex items-center justify-center w-full px-8 py-4 font-bold text-lg text-black bg-yellow-400 rounded-lg hover:bg-yellow-500 focus:outline-none focus:ring-4 focus:ring-yellow-300/50 transition-all duration-300 disabled:bg-slate-600 disabled:cursor-not-allowed"
+            },
+            React.createElement(Zap, { className: "w-6 h-6 mr-2" }),
+            "Generate Concept"
+            )
+          )
+        );
+
+        const renderLoadingState = () => React.createElement('div', { className: "text-center" },
+          React.createElement(Gamepad2, { className: "h-24 w-24 text-purple-400 animate-pulse mx-auto" }),
+          React.createElement('p', { className: "mt-4 text-2xl font-orbitron text-white animate-pulse" }, "Generating your concept..."),
+          React.createElement('p', { className: "text-gray-400" }, "The AI is putting pedal to the metal!")
+        );
+
+        const renderResultState = () => React.createElement('div', { className: "w-full" },
+          React.createElement('div', { className: "text-center mb-8" },
+            React.createElement('h1', { className: "text-4xl md:text-5xl font-orbitron font-bold text-white" }, "Concept: ", React.createElement('span', { className: "text-purple-400" }, prompt))
+          ),
+          React.createElement('div', { className: "bg-slate-800/50 rounded-xl shadow-2xl overflow-hidden backdrop-blur-sm p-4 md:p-8" },
+            React.createElement('div', { className: "grid grid-cols-1 lg:grid-cols-2 gap-8 items-start" },
+              React.createElement('img', { src: generatedContent?.imageUrl, alt: "Generated game concept", className: "w-full h-auto rounded-lg shadow-lg object-cover" }),
+              React.createElement('div', { className: "text-gray-300 text-base leading-relaxed whitespace-pre-wrap font-mono bg-slate-900/70 p-4 rounded-md h-full max-h-[500px] overflow-y-auto" },
+                generatedContent?.text
+              )
+            )
+          ),
+          React.createElement('div', { className: "text-center mt-8" },
+            React.createElement('button', {
+              onClick: handleStartOver,
+              className: "px-8 py-3 font-bold text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-500/50 transition-all duration-300"
+            },
+            "Create Another Concept"
+            )
+          )
+        );
+
+        return React.createElement('div', { className: "flex flex-col items-center justify-center min-h-[70vh] p-4 transition-all duration-500" },
+          loading && renderLoadingState(),
+          !loading && error && React.createElement('div', { className: "text-center text-red-400 bg-red-900/50 p-4 rounded-lg" },
+            React.createElement('p', { className: "font-bold" }, "An error occurred:"),
+            React.createElement('p', null, error),
+            React.createElement('button', { onClick: () => setError(null), className: "mt-2 text-sm underline" }, "Try again")
+          ),
+          !loading && !generatedContent && !error && renderInitialState(),
+          !loading && generatedContent && renderResultState()
+        );
+      };
+      
+      // --- from App.tsx ---
+      const App = () => {
+        return React.createElement(HashRouter, null,
+          React.createElement(AuthProvider, null,
+            React.createElement('div', { className: "flex flex-col min-h-screen bg-slate-900 text-white selection:bg-purple-500 selection:text-white" },
+              React.createElement(Navbar, null),
+              React.createElement('main', { className: "flex-grow container mx-auto px-4 py-8" },
+                React.createElement(Routes, null,
+                  React.createElement(Route, { path: "/", element: React.createElement(SignIn, null) }),
+                  React.createElement(Route, { path: "/about", element: React.createElement(About, null) }),
+                  React.createElement(Route, { path: "/links", element: React.createElement(Links, null) }),
+                  React.createElement(Route, { path: "/game", element: React.createElement(Game, null) })
+                )
+              ),
+              React.createElement(Footer, null)
+            )
+          )
+        );
+      };
+      
+      // --- from index.tsx ---
+      const rootElement = document.getElementById('root');
+      if (!rootElement) {
+        throw new Error("Could not find root element to mount to");
+      }
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        React.createElement(React.StrictMode, null, 
+          React.createElement(App, null)
+        )
+      );
+
+    </script>
+  </body>
+</html>
